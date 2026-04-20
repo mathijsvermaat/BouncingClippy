@@ -6,3 +6,6 @@ flask>=3.0.0
 
 # Additional utilities
 python-dotenv>=1.0.0
+
+# Azure Managed Identity authentication
+azure-identity>=1.17.0

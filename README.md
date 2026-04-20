@@ -21,7 +21,7 @@ This app serves as a reference implementation for developers looking to understa
 ### 🔌 Azure AI Foundry Connection
 The app demonstrates how to connect to Azure AI Foundry services using:
 - Endpoint URL configuration
-- API key authentication
+- Managed Identity authentication (Microsoft Entra ID)
 - Model deployment selection
 
 ### 🧠 Semantic Kernel Framework
@@ -57,7 +57,31 @@ Implements common patterns for chat applications:
 - **Azure AI Foundry Resources**:
   - A deployed AI model (e.g., GPT-4o, GPT-4, GPT-3.5-Turbo)
   - Project endpoint URL
-  - API key for authentication
+- **Azure VM** (or other Azure compute) with:
+  - System-assigned managed identity enabled
+  - **Azure AI User** role assigned on the Azure AI Foundry resource
+
+## Azure Setup
+
+Before installing the app, configure Managed Identity access in the Azure portal:
+
+### 1. Enable Managed Identity on the VM
+
+1. Go to the **Azure portal** → your **Virtual Machine**
+2. Navigate to **Security / Identity** → **System assigned**
+3. Set Status to **On** → Click **Save**
+
+### 2. Grant the VM access to the Foundry resource
+
+1. Go to the **Azure portal** → your **Azure AI Foundry** resource (or Azure OpenAI resource)
+2. Navigate to **Access control (IAM)** → **Add role assignment**
+3. Configure:
+   - **Role**: `Azure AI User`
+   - **Member type**: `Managed identity`
+   - **Member**: Select your VM's managed identity
+4. Click **Review + assign**
+
+> **Note:** RBAC role assignments can take a few minutes to propagate.
 
 ## Installation
 
@@ -78,6 +102,7 @@ This installs:
 - `semantic-kernel>=1.37.0` - Microsoft's AI orchestration framework
 - `flask>=3.0.0` - Web framework for the web interface
 - `python-dotenv>=1.0.0` - Environment variable management
+- `azure-identity>=1.17.0` - Azure Managed Identity / Entra ID authentication
 
 ### 3. Configure Azure Credentials
 
@@ -87,19 +112,19 @@ Copy the example environment file:
 copy .env.example .env
 ```
 
-Edit `.env` and add your Azure AI Foundry credentials:
+Edit `.env` and add your Azure AI Foundry configuration:
 
 ```env
 AZURE_AI_FOUNDRY_ENDPOINT=https://your-resource.services.ai.azure.com
-AZURE_AI_FOUNDRY_API_KEY=your-api-key-here
 AZURE_AI_FOUNDRY_MODEL=gpt-4o
 ```
 
-**Where to find these values:**
+> **Note:** No API key is needed. The app uses **Managed Identity** to authenticate with Azure AI Foundry. Make sure the VM's system-assigned managed identity has the **Azure AI User** role on the Foundry resource.
+
+**Where to find the endpoint:**
 1. Go to [Azure AI Foundry Portal](https://ai.azure.com/)
 2. Select your project
-3. Navigate to **Deployments** to see your deployed models
-4. Go to **Project settings** to find your endpoint and API keys
+3. Go to **Project settings** to find your endpoint URL
 
 ## Running the Application
 
@@ -134,7 +159,6 @@ python bouncing_clippy.py
 **PowerShell (CLI mode):**
 ```powershell
 $env:AZURE_AI_FOUNDRY_ENDPOINT="https://your-resource.services.ai.azure.com"
-$env:AZURE_AI_FOUNDRY_API_KEY="your-api-key-here"
 $env:AZURE_AI_FOUNDRY_MODEL="gpt-4o"
 python bouncing_clippy.py  # or python app.py for web interface
 ```
@@ -142,7 +166,6 @@ python bouncing_clippy.py  # or python app.py for web interface
 **Bash/Linux (CLI mode):**
 ```bash
 export AZURE_AI_FOUNDRY_ENDPOINT="https://your-resource.services.ai.azure.com"
-export AZURE_AI_FOUNDRY_API_KEY="your-api-key-here"
 export AZURE_AI_FOUNDRY_MODEL="gpt-4o"
 python bouncing_clippy.py  # or python app.py for web interface
 ```
@@ -208,9 +231,10 @@ Thanks for chatting with BouncingClippy! Goodbye! 👋
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `AZURE_AI_FOUNDRY_ENDPOINT` | ✅ Yes | - | Your Azure AI Foundry endpoint URL (e.g., `https://*.services.ai.azure.com`) |
-| `AZURE_AI_FOUNDRY_API_KEY` | ✅ Yes | - | Your Azure AI Foundry API key |
 | `AZURE_AI_FOUNDRY_MODEL` | ⚠️ Optional | `gpt-4o` | The deployment name of your model |
 | `FLASK_DEBUG` | ⚠️ Optional | `false` | Set to `true` to enable Flask debug mode (development only) |
+
+> **Authentication:** This app uses **Managed Identity** (`ManagedIdentityCredential`) instead of API keys. No secrets or keys need to be stored in environment variables. The VM's system-assigned managed identity must have the **Azure AI User** role on the Azure AI Foundry resource.
 
 ### Common Model Deployment Names
 
@@ -275,12 +299,23 @@ pip install -r requirements.txt
 
 ### Authentication Errors
 
-**Error:** `Missing required environment variables`
+**Error:** `Missing required environment variable: AZURE_AI_FOUNDRY_ENDPOINT`
 
 **Solution:** 
-1. Ensure `.env` file exists with correct values
+1. Ensure `.env` file exists with the endpoint value
 2. Verify no extra spaces in environment variable values
 3. Check that the file is named `.env` (not `.env.txt`)
+
+**Error:** `401 Unauthorized / Authentication failed`
+
+**Solutions:**
+- Verify the VM has **system-assigned managed identity** enabled (VM → Security / Identity → System assigned → On)
+- Ensure the managed identity has the **Azure AI User** role on the Foundry resource (Access control / IAM → Add role assignment)
+- Allow up to a few minutes for RBAC role assignments to propagate
+
+**Error:** `403 Forbidden`
+
+**Solution:** The managed identity exists but lacks the correct RBAC role on the Azure AI Foundry resource. Assign the **Azure AI User** role.
 
 ### Connection Errors
 
@@ -289,12 +324,7 @@ pip install -r requirements.txt
 **Solutions:**
 - Verify endpoint URL format: `https://*.services.ai.azure.com` (no `/inference` suffix)
 - Confirm model deployment name matches exactly (case-sensitive)
-- Check API key is valid and not expired
 - Ensure your Azure subscription has the model deployed
-
-**Error:** `401 Unauthorized`
-
-**Solution:** Verify your API key is correct and has proper permissions
 
 ### Model Errors
 
