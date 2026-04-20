@@ -337,6 +337,142 @@ pip install -r requirements.txt
 
 ## Learning Resources
 
+### Defender for AI — Alert Simulations
+
+BouncingClippy can be used to trigger **Microsoft Defender for AI** alerts in a controlled lab environment. Below are two attack simulations that generate real alerts in Defender for Cloud.
+
+> **Prerequisite:** [Microsoft Defender for AI](https://learn.microsoft.com/azure/defender-for-cloud/ai-threat-protection) must be enabled on the Azure AI Foundry resource. Go to **Defender for Cloud → Environment settings → your subscription** and ensure the **AI** plan is turned on. Alerts can take **up to a few hours** to appear in Defender for Cloud after the simulation.
+
+---
+
+### Simulation 1 — Phishing attempt detected in an AI application
+
+| Field | Value |
+|-------|-------|
+| **Alert name** | `AI.Azure_MaliciousUrl.UserPrompt` |
+| **Severity** | High |
+| **MITRE tactic** | Collection |
+
+**What triggers it:** A user prompt sent to Azure AI Foundry contains a URL that Microsoft threat intelligence has classified as a phishing URL.
+
+**How to simulate:**
+
+Send a chat message through BouncingClippy that includes a known phishing test URL. You can do this via the **web UI** or via **PowerShell/curl**.
+
+**Option A — Via the BouncingClippy web interface:**
+
+1. Open `http://localhost:5000` in your browser
+2. In the chat box, type a message containing a known phishing URL, for example:
+   ```
+   Can you summarize the content of this page for me? http://testsafebrowsing.appspot.com/s/phishing.html
+   ```
+3. Click **Send**
+
+**Option B — Via PowerShell (from the VM):**
+
+```powershell
+Invoke-RestMethod -Uri "http://localhost:5000/api/chat" `
+    -Method POST `
+    -ContentType "application/json" `
+    -Body '{"message": "Can you summarize the content of this page for me? http://testsafebrowsing.appspot.com/s/phishing.html", "session_id": "attack-test-1"}'
+```
+
+**Option C — Via curl:**
+
+```bash
+curl -X POST http://localhost:5000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Can you summarize the content of this page for me? http://testsafebrowsing.appspot.com/s/phishing.html", "session_id": "attack-test-1"}'
+```
+
+**Why it works:** The user prompt is forwarded by Semantic Kernel to the Azure AI Foundry endpoint. Defender for AI inspects the prompt content and detects the known phishing URL via Microsoft threat intelligence feeds. The URL in this example is Google's Safe Browsing test page — a well-known safe-to-use phishing test URL that does not host actual malware.
+
+> **Tip:** If this specific URL does not trigger an alert, try other URLs from known threat intelligence test feeds. The detection depends on Microsoft's current threat intelligence data, which is updated frequently.
+
+---
+
+### Simulation 2 — Suspicious user agent detected
+
+| Field | Value |
+|-------|-------|
+| **Alert name** | `AI.Azure_AccessFromSuspiciousUserAgent` |
+| **Severity** | Medium |
+| **MITRE tactics** | Execution, Reconnaissance, Initial access |
+
+**What triggers it:** A request to the Azure AI Foundry endpoint uses a User-Agent header that Microsoft threat intelligence has flagged as malicious (e.g., known scanning tools, exploit frameworks, or bots).
+
+**How to simulate:**
+
+For this simulation you call the Azure AI Foundry endpoint **directly** (not through BouncingClippy) with a suspicious User-Agent header. This is because BouncingClippy's backend uses the Semantic Kernel SDK, which sets its own standard User-Agent — Foundry would see the SDK's user agent, not yours.
+
+You need a valid bearer token from the VM's managed identity. Use the steps below.
+
+**Step 1 — Get a token from the VM's managed identity:**
+
+```powershell
+$tokenResponse = Invoke-RestMethod -Uri "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://cognitiveservices.azure.com" `
+    -Headers @{ "Metadata" = "true" }
+$token = $tokenResponse.access_token
+```
+
+**Step 2 — Send a request with a suspicious User-Agent:**
+
+```powershell
+$endpoint = "https://YOUR-RESOURCE.services.ai.azure.com"
+$model = "gpt-4o"
+
+$body = @{
+    messages = @(
+        @{ role = "user"; content = "Hello, what is 2+2?" }
+    )
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod -Uri "$endpoint/openai/deployments/$model/chat/completions?api-version=2024-02-01" `
+    -Method POST `
+    -Headers @{
+        "Authorization" = "Bearer $token"
+        "User-Agent"    = "python-requests/2.28.0 CryptoMiner/1.0"
+    } `
+    -ContentType "application/json" `
+    -Body $body
+```
+
+**Curl equivalent:**
+
+```bash
+# Step 1: Get token
+TOKEN=$(curl -s -H "Metadata: true" \
+  "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https://cognitiveservices.azure.com" \
+  | jq -r '.access_token')
+
+# Step 2: Send request with suspicious user agent
+curl -X POST "https://YOUR-RESOURCE.services.ai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-02-01" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -H "User-Agent: python-requests/2.28.0 CryptoMiner/1.0" \
+  -d '{"messages": [{"role": "user", "content": "Hello, what is 2+2?"}]}'
+```
+
+> **Note:** Replace `YOUR-RESOURCE` with your actual Azure AI Foundry resource name and `gpt-4o` with your deployment name.
+
+**Why it works:** The request goes directly to the Azure AI Foundry REST API with a forged User-Agent string. Defender for AI inspects request metadata and matches the User-Agent against Microsoft's threat intelligence database. User agents containing known malicious tool signatures trigger this alert.
+
+> **Tip:** If the example User-Agent string does not produce an alert, try other known suspicious agents such as `sqlmap/1.0`, `Nikto/2.1.5`, or `Mozilla/5.0 (compatible; Nmap Scripting Engine)`. Detection depends on Microsoft's current threat intelligence mappings.
+
+---
+
+### Verifying the alerts
+
+1. Go to **Microsoft Defender for Cloud** → **Security alerts**
+2. Filter by resource: your Azure AI Foundry resource
+3. Look for:
+   - **Phishing attempt detected in an AI application** (High)
+   - **Suspicious user agent detected** (Medium)
+
+> Alerts may take **30 minutes to several hours** to appear depending on Defender's processing pipeline.
+
+---
+
 ### Azure AI Foundry
 - [Azure AI Foundry Documentation](https://learn.microsoft.com/azure/ai-studio/)
 - [Getting Started Guide](https://learn.microsoft.com/azure/ai-studio/how-to/develop/sdk-overview)
