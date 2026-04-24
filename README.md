@@ -87,15 +87,27 @@ Before installing the app, configure Managed Identity access in the Azure portal
 
 ### 1. Clone or Download this Repository
 
+On your **Virtual Machine**:
+- Install [git](https://git-scm.com/install/windows)
+- Install [python](https://www.python.org/downloads/)
+  - On a server, easiest way to do this is to download the MSIX, go to your downloads folder and then run `Add-AppxPackage <path to MSIX>`
+  
+Then, run the following command:
+
 ```bash
-git clone <repository-url>
-cd basic-foundry-chat
+git clone https://github.com/mathijsvermaat/BouncingClippy
+cd BouncingClippy
 ```
 
 ### 2. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
+```
+
+*Alternatively, if this doesn't work you can run:*
+```bash
+py -m pip install -r requirements.txt
 ```
 
 This installs:
