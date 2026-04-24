@@ -81,7 +81,7 @@ Before installing the app, configure Managed Identity access in the Azure portal
    - **Member**: Select your VM's managed identity
 4. Click **Review + assign**
 
-> **Note:** RBAC role assignments can take a few minutes to propagate.
+> **Note:** RBAC role assignments can take a few **hours** to propagate. Make sure to wait a bit before trying to run the app!
 
 ## Installation
 
@@ -91,6 +91,7 @@ On your **Virtual Machine**:
 - Install [git](https://git-scm.com/install/windows)
 - Install [python](https://www.python.org/downloads/)
   - On a server, easiest way to do this is to download the MSIX, go to your downloads folder and then run `Add-AppxPackage <path to MSIX>`
+  - 
   
 Then, run the following command:
 
