@@ -9,46 +9,7 @@ A demonstration chat application showcasing **Azure AI integration** using **Sem
 BouncingClippy is a sample application designed to demonstrate how to integrate Azure AI services into Python applications. It showcases:
 
 - **Azure AI Foundry Integration**: Connecting to Azure-hosted AI models
-- **Semantic Kernel Framework**: Microsoft's open-source SDK for AI orchestration
-- **Chat Completion API**: Building conversational AI experiences
-- **Conversation History Management**: Maintaining context across multiple turns
-- **Async/Await Patterns**: Modern Python async programming with AI services
-
-This app serves as a reference implementation for developers looking to understand Azure AI integration patterns and build their own AI-powered applications.
-
-## Key Integration Points
-
-### 🔌 Azure AI Foundry Connection
-The app demonstrates how to connect to Azure AI Foundry services using:
-- Endpoint URL configuration
-- Managed Identity authentication (Microsoft Entra ID)
-- Model deployment selection
-
-### 🧠 Semantic Kernel Framework
-Built on Microsoft's Semantic Kernel, showcasing:
-- `AzureChatCompletion` service integration
-- `ChatHistory` for conversation management
-- `AzureChatPromptExecutionSettings` for request configuration
-- Async chat completion patterns
-
-### 💬 Conversational AI Patterns
-Implements common patterns for chat applications:
-- System message prompts for personality
-- Multi-turn conversation context
-- Error handling and retry logic
-- Clean conversation reset functionality
-
-## Features
-
-- 🌐 **Web Interface**: Beautiful web UI with a bouncing Clippy animation
-- 💬 **Interactive Chat**: Real-time chat interface with Azure AI integration
-- 📎 **Animated Clippy**: Classic Microsoft assistant bouncing around the screen
-- 🎨 **Modern Design**: Responsive, gradient-themed interface
-- 💬 **Interactive CLI**: Real-time chat interface with streaming responses (legacy mode)
-- 🔄 **Context Awareness**: Multi-turn conversations with full history
-- ⚙️ **Configurable Models**: Easy switching between different Azure AI models
-- 🧹 **Session Management**: Clear conversation history on demand
-- 🎨 **Simple Setup**: Environment-based configuration with `.env` support
+- **Chat Completion API**: Building conversational AI experiences using Foundry models
 
 ## Prerequisites
 
@@ -81,7 +42,7 @@ Before installing the app, configure Managed Identity access in the Azure portal
    - **Member**: Select your VM's managed identity
 4. Click **Review + assign**
 
-> **Note:** RBAC role assignments can take a few **hours** to propagate. Make sure to wait a bit before trying to run the app!
+> **Note:** RBAC role assignments can take a few minutes to propagate. Be sure to wait a bit before trying to run the app!
 
 ## Installation
 
@@ -90,10 +51,15 @@ Before installing the app, configure Managed Identity access in the Azure portal
 On your **Virtual Machine**:
 - Install [git](https://git-scm.com/install/windows)
 - Install [python](https://www.python.org/downloads/)
-  - On a server, easiest way to do this is to download the MSIX, go to your downloads folder and then run `Add-AppxPackage <path to MSIX>`
-  - 
+
+On a server, the easiest way to do this is by using winget:
+
+```bash
+winget install Python.Python.3 --silent
+winget install Git.Git --silent
+``` 
   
-Then, run the following command:
+Then, clone this git repository:
 
 ```bash
 git clone https://github.com/mathijsvermaat/BouncingClippy
@@ -106,10 +72,7 @@ cd BouncingClippy
 pip install -r requirements.txt
 ```
 
-*Alternatively, if this doesn't work you can run:*
-```bash
-py -m pip install -r requirements.txt
-```
+
 
 This installs:
 - `semantic-kernel>=1.37.0` - Microsoft's AI orchestration framework
@@ -125,11 +88,12 @@ Copy the example environment file:
 copy .env.example .env
 ```
 
-Edit `.env` and add your Azure AI Foundry configuration:
+Edit `.env` and add your Azure AI Foundry configuration. An example configuration is as follows:
 
 ```env
-AZURE_AI_FOUNDRY_ENDPOINT=https://your-resource.services.ai.azure.com
-AZURE_AI_FOUNDRY_MODEL=gpt-4o
+AZURE_AI_FOUNDRY_ENDPOINT=https://**my-resource-name**.services.ai.azure.com
+AZURE_AI_FOUNDRY_MODEL=gpt-5.4-1
+FLASK_DEBUG=False
 ```
 
 > **Note:** No API key is needed. The app uses **Managed Identity** to authenticate with Azure AI Foundry. Make sure the VM's system-assigned managed identity has the **Azure AI User** role on the Foundry resource.
@@ -159,30 +123,6 @@ You'll see:
 - A chat interface in the bottom-right corner
 - The ability to chat with Azure AI through a beautiful web UI
 
-### Command-Line Interface (Legacy)
-
-For the traditional CLI experience:
-
-```bash
-python bouncing_clippy.py
-```
-
-### Alternative: Using Environment Variables Directly
-
-**PowerShell (CLI mode):**
-```powershell
-$env:AZURE_AI_FOUNDRY_ENDPOINT="https://your-resource.services.ai.azure.com"
-$env:AZURE_AI_FOUNDRY_MODEL="gpt-4o"
-python bouncing_clippy.py  # or python app.py for web interface
-```
-
-**Bash/Linux (CLI mode):**
-```bash
-export AZURE_AI_FOUNDRY_ENDPOINT="https://your-resource.services.ai.azure.com"
-export AZURE_AI_FOUNDRY_MODEL="gpt-4o"
-python bouncing_clippy.py  # or python app.py for web interface
-```
-
 ## Usage
 
 ### Web Interface
@@ -204,59 +144,6 @@ Once running, BouncingClippy CLI accepts the following commands:
 | `clear` | Clear conversation history and start fresh |
 | `quit` or `exit` | Exit the application |
 
-### Example Session
-
-```
-============================================================
-🎉 Welcome to BouncingClippy! 🎉
-============================================================
-A friendly chat app powered by Azure AI Foundry
-
-Commands:
-  - Type your message and press Enter to chat
-  - Type 'clear' to clear conversation history
-  - Type 'quit' or 'exit' to end the chat
-============================================================
-
-You: Hello! Can you explain what you are?
-
-BouncingClippy: Hi there! I'm BouncingClippy, a helpful AI assistant powered 
-by Azure AI Foundry. I'm here to demonstrate how Azure's AI services can be 
-integrated into applications using Semantic Kernel...
-
-You: What can you help me with?
-
-BouncingClippy: I can assist with a variety of tasks...
-
-You: clear
-
-🔄 Conversation history cleared!
-
-You: quit
-
-Thanks for chatting with BouncingClippy! Goodbye! 👋
-```
-
-## Configuration Reference
-
-### Environment Variables
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `AZURE_AI_FOUNDRY_ENDPOINT` | ✅ Yes | - | Your Azure AI Foundry endpoint URL (e.g., `https://*.services.ai.azure.com`) |
-| `AZURE_AI_FOUNDRY_MODEL` | ⚠️ Optional | `gpt-4o` | The deployment name of your model |
-| `FLASK_DEBUG` | ⚠️ Optional | `false` | Set to `true` to enable Flask debug mode (development only) |
-
-> **Authentication:** This app uses **Managed Identity** (`ManagedIdentityCredential`) instead of API keys. No secrets or keys need to be stored in environment variables. The VM's system-assigned managed identity must have the **Azure AI User** role on the Azure AI Foundry resource.
-
-### Common Model Deployment Names
-
-- `gpt-4o` - GPT-4 Optimized (recommended)
-- `gpt-4` - GPT-4 standard
-- `gpt-35-turbo` - GPT-3.5 Turbo
-- `gpt-4o-mini` - GPT-4 Mini (cost-effective)
-
-**Note:** Use the exact deployment name from your Azure AI Foundry project.
 
 ## Architecture Overview
 
@@ -308,6 +195,13 @@ README.md                # This file
 **Solution:** Install dependencies:
 ```bash
 pip install -r requirements.txt
+```
+### pip errors
+
+If running `pip` doesn't work for you, alternatively you can run:
+
+```bash
+py -m pip install -r requirements.txt
 ```
 
 ### Authentication Errors
